@@ -23,9 +23,9 @@
             <span>Past Orders</span>
           </a>
         </nav>
-        <a href="#" class="top-bar-cart-link">
+        <a @click="toggleSidebar" class="top-bar-cart-link">
           <i class="icofont-cart-alt icofont-1x"></i>
-          <span>Cart (0)</span>
+          <span>Cart ({{ totalQuantity }})</span>
         </a>
       </header>
 
@@ -41,19 +41,19 @@
 
         <div class="recommended">
 
-          <div class="card">
+          <div v-for="(product, idx) in inventory.slice(0,3)" :key="product.id" class="card">
             <div class="card-title">
-              Carrots
+              {{product.name}}
             </div>
             <div class="card-body">
-              <i class="icofont-10x icofont-carrot"></i>
+              <i class="icofont-10x icofont-{{ product.icon }}"></i>
               <form>
                 <div class="row">
                   <div class="cell">
                     <label>Type:</label>
                   </div>
                   <div class="cell">
-                    <em>Vegetable</em>
+                    <em>{{ product.type }}</em>
                   </div>
                 </div>
                 <div class="row">
@@ -61,7 +61,7 @@
                     <label>Price:</label>
                   </div>
                   <div class="cell">
-                    $4.82
+                    ${{product.price['USD']}}
                   </div>
                 </div>
                 <div class="row">
@@ -69,89 +69,13 @@
                     <label>Quantity:</label>
                   </div>
                   <div class="cell">
-                    <input type="number" value="0">
+                    <input type="number" v-model.number="product.quantity">
                   </div>
                 </div>
               </form>
             </div>
             <div class="card-footer">
-              <button class="btn btn-light">Add to cart</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">
-              Pineapples
-            </div>
-            <div class="card-body">
-              <i class="icofont-10x icofont-pineapple"></i>
-              <form>
-                <div class="row">
-                  <div class="cell">
-                    <label>Type:</label>
-                  </div>
-                  <div class="cell">
-                    <em>Fruit</em>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="cell">
-                    <label>Price:</label>
-                  </div>
-                  <div class="cell">
-                    $1.62
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="cell">
-                    <label>Quantity:</label>
-                  </div>
-                  <div class="cell">
-                    <input type="number" value="0">
-                  </div>
-                </div>
-              </form>
-            </div>
-            <div class="card-footer">
-              <button class="btn btn-light">Add to cart</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">
-              Cherries
-            </div>
-            <div class="card-body">
-              <i class="icofont-10x icofont-cherry"></i>
-              <form>
-                <div class="row">
-                  <div class="cell">
-                    <label>Type:</label>
-                  </div>
-                  <div class="cell">
-                    <em>Fruit</em>
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="cell">
-                    <label>Price:</label>
-                  </div>
-                  <div class="cell">
-                    $1.04
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="cell">
-                    <label>Quantity:</label>
-                  </div>
-                  <div class="cell">
-                    <input type="number" value="0">
-                  </div>
-                </div>
-              </form>
-            </div>
-            <div class="card-footer">
-              <button class="btn btn-light">Add to cart</button>
+              <button class="btn btn-light" @click="addToCart(product.name, idx)">Add to cart</button>
             </div>
           </div>
 
@@ -159,11 +83,127 @@
 
       </main>
 
+      <sidebar
+        v-if="showSidebar"
+        :toggle="toggleSidebar"
+        :cart="cart"
+        :inventory="inventory"
+        :remove="removeItem"
+        />
+
       <footer>
       </footer>
 
     </div>
       
+    </script>
+    <script src="https://unpkg.com/vue@next"></script>
+    <script>
+      let app = Vue.createApp({
+        data() {
+          return {
+            showSidebar: false,
+            inventory: [],
+            cart: {}
+          }
+        },
+        computed: {
+          totalQuantity() {
+            return Object.values(this.cart).reduce((acc, quantity) => {
+              return acc + quantity
+            }, 0)
+          }
+        },
+        methods: {
+          addToCart(name, index) {
+            if(!this.cart[name])
+              this.cart[name] = 0
+            this.cart[name] += this.inventory[index].quantity
+            this.inventory[index].quantity = 0
+          },
+          toggleSidebar() {
+            this.showSidebar = !this.showSidebar
+          },
+          removeItem(name) {
+            console.log(name);
+            delete this.cart[name]
+          }
+        },
+        async mounted() {
+          const res = await fetch('./food.json')
+          const data = await res.json()
+          this.inventory = data
+        }
+      });
+
+      app.component('sidebar', {
+        props: ['toggle','cart','inventory','remove'],
+        computed: {
+          calculateTotal() {
+            return Object.entries(this.cart).reduce((acc, [key, quantity]) => {
+              return acc + (quantity * this.getPrice(key))
+            }, 0).toFixed(2)
+          }
+        },
+        methods: {
+          getProduct(name) {
+            return this.inventory.find(p => p.name === name)
+          },
+          getIcon(name) {
+            return this.getProduct(name).icon
+          },
+          getPrice(name) {
+            return this.getProduct(name).price['USD']
+          }
+        },
+        template: `<aside class="cart-container">
+        <div class="cart">
+          <h1 class="cart-title spread">
+            <span>
+              Cart
+              <i class="icofont-cart-alt icofont-1x"></i>
+            </span>
+            <button class="cart-close" @click="toggle">&times;</button>
+          </h1>
+
+          <div class="cart-body">
+            <table class="cart-table">
+              <thead>
+                <tr>
+                  <th><span class="sr-only">Product Image</span></th>
+                  <th>Product</th>
+                  <th>Price</th>
+                  <th>Qty</th>
+                  <th>Total</th>
+                  <th><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(quantity, name, i) in cart" :key="i">
+                  <td><i class="icofont-{{ getIcon(name) }} icofont-3x"></i></td>
+                  <td>{{ name }}</td>
+                  <td>\${{ getPrice(name) }}</td>
+                  <td class="center">{{ quantity }}</td>
+                  <td>\${{ quantity * getPrice(name) }}</td>
+                  <td class="center">
+                    <button @click="remove(name)" class="btn btn-light cart-remove" >
+                      &times;
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p class="center" v-if="Object.keys(cart).length == 0"><em>No items in cart</em></p>
+            <div class="spread">
+              <span><strong>Total:</strong> \${{ calculateTotal }} </span>
+              <button class="btn btn-light">Checkout</button>
+            </div>
+          </div>
+        </div></aside>`
+      });
+
+      app.mount('#app');
     </script>
   </body>
 </html>
