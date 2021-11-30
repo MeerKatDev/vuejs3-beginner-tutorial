@@ -1,5 +1,9 @@
 # product-and-cart
 
+freeCodeCamp Vue.js 3 app, course developed by Gwen Faraday, here: https://www.youtube.com/watch?v=FXpIoQ_rT_c
+
+This is the completed app. There are tiny differences.
+
 ## Project setup
 ```
 npm install
